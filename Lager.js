@@ -135,6 +135,60 @@
       }
     },
 
+    /*  Listen for an event on the selector passed in, and log another selectors data on that event.
+        Remember your selector can contain multiple elements, and you're passing in an array of dataAttr's.
+    */
+    listenAndLogData: function(selectorToListen, specEvent, selectorToLog, dataAttr, logFormat, ignoreErrors) {
+      var parent = this;
+
+      if(!$) {
+        throw 'you can not use selectors without jQuery in this version of Lager.js';
+      } else {
+        // helper function for constructing  selectorAndEvent object
+        parent.log("Creating the selectorAndEvent object...");
+        var selectorAndEvent = createSelectorEventObject(selectorToListen, specEvent);
+
+        // you have to check this on each listenAndLogData call and not on every event, that's why this is up here.
+        checkOrRemoveDisabledListenEvents(selectorAndEvent, 1);
+
+        // set up the array you'll use to add each selectorToLog they want to 
+        var selectorsToLog = [];
+
+        $(selectorToListen).on(specEvent, function() {
+          // This code will be run every time this event fires no matter if the parent event is called or not so we have to do another check.
+          var disabled = checkOrRemoveDisabledListenEvents(selectorAndEvent, 0);
+
+          // make sure the selector you're about to use hasn't been disabled
+          if(disabled == false) {
+            parent.log("it is not disabled...");
+            // populate the selectorsToLog by looping through the given selector
+            $(selectorToLog).each(function() {
+              elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
+
+              // loop through the data attributes and log them if they exist
+              for(var i = 0; i < dataAttr.length; i++) {
+                var attrName = dataAttr[i];
+                var dataVal = $(this).attr(attrName.toString());
+
+                if(dataVal) {
+                  if(logFormat == 5 || logFormat == "TABLE") {
+                    eventsLogged_table.push({
+                      'name'      : elementNameToUse, 
+                      'attribute' : attrName, 
+                      'value'     : dataVal
+                    });
+                  } else {
+                    eventsLogged_message += "name: " + elementNameToUse;
+                    eventsLogged_message += "event: " + specEvent + "\n" + "\n";
+                  }
+                }
+              }
+            });
+          }
+        });        
+      }
+    },
+
     /* Allows you to pass in any selector and event combination and still 
        gives you the flexibility of choosing your log format.      
     */
@@ -146,41 +200,31 @@
       if(!$) {
         throw 'you can not use selectors without jQuery in this version of Lager.js';
       } else {
-        var selectorAndEvent = {
-          'selector'  : selector.selector,
-          'specEvent' : specEvent,
-          // for comparing selector event objects
-          'equals'    : function(other) {
-            return other.selector == this.selector && other.specEvent == this.specEvent;
-          }
-        };
+        var selectorAndEvent = createSelectorEventObject(selector, specEvent);
 
         // you have to check this on each listenToEvent call and not on every event, that's why this is up here.
-        for(var i = 0; i < disabledListenEvents.length; i++) {
-          if(selectorAndEvent.equals(disabledListenEvents[i])) {
-            disabledListenEvents.splice(i, 1);
-          }
-        }
+        checkOrRemoveDisabledListenEvents(selectorAndEvent, 1);
 
         $(selector).on(specEvent, function() {
           // This code will be run every time this event fires no matter if the parent event is called or not so we have to do another check.
-          for(var i = 0; i < disabledListenEvents.length; i++) {
-            if(selectorAndEvent.equals(disabledListenEvents[i])) {
-              disabled = true;
-            }
-          }
+          var disabled = checkOrRemoveDisabledListenEvents(selectorAndEvent, 0);
 
           // make sure the selector you're about to use hasn't been disabled
           if(disabled == false) {
             elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
-            eventsLogged_table.push({
-              'name'      : elementNameToUse,
-              'event'     : specEvent,
-              'timestamp' : new Date(Date.now())
-            });
-            // if you decide to use non-table mode (for compliance/requirements/etc)
-            eventsLogged_message += "name: " + elementNameToUse;
-            eventsLogged_message += "event: " + specEvent + "\n" + "\n";
+            
+            // you don't want to just populate the table every time, check if they're using it, otherwise just use straight message.
+            if(logFormat == 5 || logFormat == "TABLE") {
+              eventsLogged_table.push({
+                'name'      : elementNameToUse,
+                'event'     : specEvent,
+                'timestamp' : new Date(Date.now())
+              });
+            } else {
+              // if you decide to use non-table mode (for compliance/requirements/etc)
+              eventsLogged_message += "name: " + elementNameToUse;
+              eventsLogged_message += "event: " + specEvent + "\n" + "\n";
+            }
           }
         });
       }
@@ -220,7 +264,48 @@
   };
   
   Lager.init = function() {};    
-	Lager.init.prototype = Lager.prototype;
-  
+	Lager.init.prototype = Lager.prototype;  
   global.Lager = global.L$ = Lager;
+
+  /*  Utility method to create a slector+event object  */
+  function createSelectorEventObject(selector, specEvent) {
+    var selectorAndEvent = {
+      'selector'  : selector.selector,
+      'specEvent' : specEvent,
+      // for comparing selector event objects
+      'equals'    : function(other) {
+        return other.selector == this.selector && other.specEvent == this.specEvent;
+      }
+    }
+
+    return selectorAndEvent;
+  }
+
+  /*  Utility function to just check if a listen event is in the disabled list, and remove if indicated  */
+  function checkOrRemoveDisabledListenEvents(selectorAndEvent, checkOrRemoveInt) {
+    var disabled = false;
+    // Checking whether the event is in the list, if it is we'll know it's disabled
+    if(checkOrRemoveInt == 0) {
+      Lager.prototype.log("we are only checkig existence...");
+      for(var i = 0; i < disabledListenEvents.length; i++) {
+        if(selectorAndEvent.equals(disabledListenEvents[i])) {
+          disabled = true;
+        }
+      }
+
+      return disabled;
+    }
+    // Removing from disabledListenEvents
+    else if(checkOrRemoveInt == 1) {
+      Lager.prototype.log("searching disabledListenEvents for the indicated listenEvent...");
+      for(var i = 0; i < disabledListenEvents.length; i++) {
+        if(selectorAndEvent.equals(disabledListenEvents[i])) {
+          disabledListenEvents.splice(i, 1);
+          Lager.prototype.log("removed listenEvent sucessfully from disabledListenEvents...");
+        }
+      }
+    } else {
+      Lager.prototype.log("Please indicate a checkOrRemoveInt to use this function...");
+    }
+  }
 }(window, jQuery));
