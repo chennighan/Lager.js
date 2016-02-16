@@ -5,75 +5,75 @@
 */
 
 (function(global, $) {
-	var Lager = function() {
-  		return new Lager.init();
+  var Lager = function() {
+    return new Lager.init();
   };
 
   var eventsLogged_table   = [];
   var eventsLogged_message = '';
   var disabledListenEvents = [];
+  var disabledInstance = false;
 
-  // Any methods you'll want Lager to be able to use.
+  /*  Any methods you'll want Lager to be able to use.  */
   Lager.prototype = {
-    /* The main "logging" function that determines what level to log at and actually
-       calls the built in log functions.
+    /*  The main "logging" function that determines what level to log at and actually
+        calls the built in log functions.
     */
     log : function(objToLog, logLevel) {
-      // if the log level is passed in accept it, if not reset it from previous attempts
-      if(logLevel) {
-        this.logLevel = logLevel;
-      } else {
-        this.setLogLevel();
-      }
+      //  If the user disables logging we can turn it off with this flag
+      if(!disabledInstance) {
+        //  If the log level is passed in accept it, if not reset it from previous attempts
+        if(logLevel) {
+          this.logLevel = logLevel;
+        } else {
+          this.setLogLevel();
+        }
 
-      switch(this.logLevel) {
-        case 'TRACE':
-        case 0:
-          //console.trace("log level: trace");
+        //  TRACE
+        if(this.logLevel === 0) {
           console.trace(objToLog);
-          break;
-        case 'DEBUG':
-        case 1:
-          //console.debug("log level: debug");
+        }
+        //  DEBUG
+        else if( this.logLevel === 1) {
           console.debug(objToLog);
-          break;
-        case 'INFO':
-        case 2:
-          //console.info("log level: info");
+        }
+        //  INFO
+        else if (this.logLevel === 2) {
           console.info(objToLog);
-          break;
-        case 'WARN':
-        case 3:
-          //console.warn("log level: warn");
+        }
+        //  WARN
+        else if (this.logLevel === 3) {
           console.warn(objToLog);
-          break;
-        case 'ERROR':
-        case 4:
-          //console.error("log level: error");
+        }
+        //  ERROR
+        else if (this.logLevel === 4) {
           console.error(objToLog);
-          break;
-        case 'TABLE': 
-        case 5:
-          // console.table("log level: table");
+        }
+        //  TABLE
+        else if (this.logLevel === 5) {
           console.table(objToLog);
-          break;
-        default:
+        }
+        // LOG
+        else {
           console.log(objToLog);
-          break;
+        }
       }
     },
 
-    /* Set your global log level, this is what your default log level will become */
+    /*  Set your global log level, this is what your default log level will become */
     setLogLevel: function(logLevel) {
       this.logLevel = logLevel;
     },
 
-    // log all elements with the given selector
+    /*  Log all elements with the given selector  */
     logAll: function(selector) {
-      if(!$) {
-        throw 'you can not use selectors without jQuery in this version of Lager.js';
-      } else {
-        this.log($(selector));
+      // If the user disables logging we can turn it off with this flag
+      if(!disabledInstance) {
+        if(!$) {
+          throw 'you can not use selectors without jQuery in this version of Lager.js';
+        } else {
+          this.log($(selector));
+        }
       }
 
       return this;
@@ -93,50 +93,57 @@
        multiple selectors, they're just going to need to write a few more statements in their app.
     */
     logAllData: function(selector, dataAttr, logFormat, ignoreErrors) {
-      if(!$) {
-        throw 'you can not use selectors without jQuery in this version of Lager.js';
-      } else {
-        var parent   = this;
-        var message  = '';
-        var messages = [];
-        var elementNameToUse = '';
+      // if the user disables logging we can turn it off with this flag
+      if(!disabledInstance) {
+        if(!$) {
+          throw 'you can not use selectors without jQuery in this version of Lager.js';
+        } else {
+          var parent   = this;
+          var message  = '';
+          var messages = [];
+          var elementNameToUse = '';
 
-        $(selector).each(function() {
-          elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
+          $(selector).each(function() {
+            elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
 
-          for(var i = 0; i < dataAttr.length; i++) {
-            var attrName = dataAttr[i];
-            var dataVal = $(this).attr(attrName.toString());
+            for(var i = 0; i < dataAttr.length; i++) {
+              var attrName = dataAttr[i];
+              var dataVal = $(this).attr(attrName.toString());
 
-            if(dataVal) {
-              messages.push({
-                'name'      : elementNameToUse, 
-                'attribute' : attrName, 
-                'value'     : dataVal
-              });
+              if(dataVal) {
+                messages.push({
+                  'name'      : elementNameToUse, 
+                  'attribute' : attrName, 
+                  'value'     : dataVal
+                });
 
-              // if you decide to use non-table mode (for compliance/requirements/etc)
-              message += "name: " + elementNameToUse + "\n";
-              message += "attribute: " + attrName + "\n";
-              message += "value: " + dataVal + "\n" + "\n";
-            } else {
-              if(!ignoreErrors) {
-                parent.log('there was no data attribute: ' + attrName + " found on this element: " + elementNameToUse, 4);
+                // if you decide to use non-table mode (for compliance/requirements/etc)
+                message += "name: " + elementNameToUse + "\n";
+                message += "attribute: " + attrName + "\n";
+                message += "value: " + dataVal + "\n" + "\n";
+              } else {
+                if(!ignoreErrors) {
+                  parent.log('there was no data attribute: ' + attrName + " found on this element: " + elementNameToUse, 4);
+                }
               }
             }
-          }
-        });  
+          });  
 
-        if(logFormat == 'table') {      
-          this.log(messages, 5);
-        } else {
-          this.log(message);
+          if(logFormat == 'table') {      
+            this.log(messages, 5);
+          } else {
+            this.log(message);
+          }
         }
       }
     },
 
     /*  Listen for an event on the selector passed in, and log another selectors data on that event.
         Remember your selector can contain multiple elements, and you're passing in an array of dataAttr's.
+
+        TODO: It makes sense to log the event in the event log, but the data log should be in a 
+        separate table. It might also make sense to add a column called: "methodCalled" so in the
+        event log you can see what method called the event.
     */
     listenAndLogData: function(selectorToListen, specEvent, selectorToLog, dataAttr, logFormat, ignoreErrors) {
       var parent = this;
@@ -151,16 +158,22 @@
         // you have to check this on each listenAndLogData call and not on every event, that's why this is up here.
         checkOrRemoveDisabledListenEvents(selectorAndEvent, 1);
 
-        // set up the array you'll use to add each selectorToLog they want to 
-        var selectorsToLog = [];
+        $(selectorToListen.selector).on(specEvent, function() {
+          parent.log("event: " + specEvent);
+          parent.log("listen to: " + JSON.stringify(selectorToListen.selector));
+          parent.log("log: " + JSON.stringify(selectorToLog.selector));
 
-        $(selectorToListen).on(specEvent, function() {
+          var messages = [];
+          var message = "";
+          var elementNameToUse = "";
+
           // This code will be run every time this event fires no matter if the parent event is called or not so we have to do another check.
           var disabled = checkOrRemoveDisabledListenEvents(selectorAndEvent, 0);
 
           // make sure the selector you're about to use hasn't been disabled
-          if(disabled == false) {
+          if(disabled === false) {
             parent.log("it is not disabled...");
+            parent.log("messages: "+JSON.stringify(messages));
             // populate the selectorsToLog by looping through the given selector
             $(selectorToLog).each(function() {
               elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
@@ -170,32 +183,53 @@
                 var attrName = dataAttr[i];
                 var dataVal = $(this).attr(attrName.toString());
 
+                // here we are setting up our data log
                 if(dataVal) {
                   if(logFormat == 5 || logFormat == "TABLE") {
-                    eventsLogged_table.push({
+                    messages.push({
                       'name'      : elementNameToUse, 
                       'attribute' : attrName, 
                       'value'     : dataVal
                     });
                   } else {
-                    eventsLogged_message += "name: " + elementNameToUse;
-                    eventsLogged_message += "event: " + specEvent + "\n" + "\n";
+                    message += "name: " + elementNameToUse + "\n";
+                    message += "attribute: " + attrName + "\n";
+                    message += "value : " + dataVal + "\n" + "\n";
                   }
                 }
               }
             });
+
+            if(logFormat == 5 || logFormat == "TABLE") {
+              parent.log("logging table...");
+              parent.log(messages, 5);
+            } else {
+              parent.log(message);
+            }
+
+            // you don't want to just populate the table every time, check if they're using it, otherwise just use straight message.
+            if(logFormat == 5 || logFormat == "TABLE") {
+              eventsLogged_table.push({
+                'name'      : elementNameToUse,
+                'event'     : specEvent,
+                'timestamp' : new Date(Date.now())
+              });
+            } else {
+              // if you decide to use non-table mode (for compliance/requirements/etc)
+              eventsLogged_message += "name: " + elementNameToUse + "\n";
+              eventsLogged_message += "event: " + specEvent + "\n";
+              eventsLogged_message += "timestamp: " + new Date(Date.now()) + "\n" + "\n";
+            }
           }
         });        
       }
     },
 
-    /* Allows you to pass in any selector and event combination and still 
-       gives you the flexibility of choosing your log format.      
+    /*  Allows you to pass in any selector and event combination and still 
+        gives you the flexibility of choosing your log format.      
     */
     listenToEvent: function(selector, specEvent, logFormat, ignoreErrors) {
-      var parent = this;
       var elementNameToUse = '';
-      var disabled = false;
 
       if(!$) {
         throw 'you can not use selectors without jQuery in this version of Lager.js';
@@ -210,7 +244,7 @@
           var disabled = checkOrRemoveDisabledListenEvents(selectorAndEvent, 0);
 
           // make sure the selector you're about to use hasn't been disabled
-          if(disabled == false) {
+          if(disabled === false) {
             elementNameToUse = $(this).attr("id") || $(this).attr("class") || $(this);
             
             // you don't want to just populate the table every time, check if they're using it, otherwise just use straight message.
@@ -222,17 +256,18 @@
               });
             } else {
               // if you decide to use non-table mode (for compliance/requirements/etc)
-              eventsLogged_message += "name: " + elementNameToUse;
-              eventsLogged_message += "event: " + specEvent + "\n" + "\n";
+              eventsLogged_message += "name: " + elementNameToUse + "\n";
+              eventsLogged_message += "event: " + specEvent + "\n";
+              eventsLogged_message += "timestamp: " + new Date(Date.now()) + "\n" + "\n";
             }
           }
         });
       }
     },
 
-    /* Allows you to stop logging based on the selector and event you pass in. This
-       DOES NOT "off" or disable the event listener itself, it just allows you to 
-       stop logging the event based on selector and event.
+    /*  Allows you to stop logging based on the selector and event passed in. This
+        DOES NOT "off" or disable the event listener itself, it just allows you to 
+        stop logging the event based on selector and event.
     */
     disableListenEvent: function(selector, specEvent) {
       var objToPush = {
@@ -247,7 +282,7 @@
       disabledListenEvents.push(objToPush);
     },
 
-    /* Quick and easy function to show your entire event log */
+    /*  Quick and easy function to show your entire event log  */
     showEventLog: function(logFormat) {
       if(logFormat == 'table') {
         this.log(eventsLogged_table, 5);
@@ -256,15 +291,25 @@
       }
     },
 
-    /* Clear your entire event log */
+    /*  Clear your entire event log  */
     clearEventLog: function() {
       eventsLogged_table   = [];
       eventsLogged_message = '';
+    },
+
+    /*  Disable logging from this Lager instance  */
+    disable: function() {
+      disabledInstance = true;
+    },
+
+    /*  Enable logging from this Lager instance  */
+    enable: function() {
+      disabledInstance = false;
     }
   };
   
   Lager.init = function() {};    
-	Lager.init.prototype = Lager.prototype;  
+  Lager.init.prototype = Lager.prototype;  
   global.Lager = global.L$ = Lager;
 
   /*  Utility method to create a slector+event object  */
@@ -276,7 +321,7 @@
       'equals'    : function(other) {
         return other.selector == this.selector && other.specEvent == this.specEvent;
       }
-    }
+    };
 
     return selectorAndEvent;
   }
@@ -285,7 +330,7 @@
   function checkOrRemoveDisabledListenEvents(selectorAndEvent, checkOrRemoveInt) {
     var disabled = false;
     // Checking whether the event is in the list, if it is we'll know it's disabled
-    if(checkOrRemoveInt == 0) {
+    if(checkOrRemoveInt === 0) {
       Lager.prototype.log("we are only checkig existence...");
       for(var i = 0; i < disabledListenEvents.length; i++) {
         if(selectorAndEvent.equals(disabledListenEvents[i])) {
